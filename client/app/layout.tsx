@@ -40,7 +40,7 @@ export default function RootLayout({
         inter.variable,
       )}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="h-full flex flex-col">
         <ClerkProvider
           localization={{
             signUp: {
