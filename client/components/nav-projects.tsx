@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { MoreHorizontalIcon, FolderIcon, ShareIcon, Trash2Icon } from "lucide-react"
+import { MoreHorizontalIcon, FolderIcon, ShareIcon, Trash2Icon, PinIcon } from "lucide-react"
 
 export function NavProjects({
   projects,
@@ -30,7 +30,7 @@ export function NavProjects({
   const { isMobile } = useSidebar()
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>Pinned Chats</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
@@ -58,16 +58,20 @@ export function NavProjects({
               >
                 <DropdownMenuItem>
                   <FolderIcon className="text-muted-foreground" />
-                  <span>View Project</span>
+                  <span>View Chat</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <ShareIcon className="text-muted-foreground" />
-                  <span>Share Project</span>
+                  <span>Share Chat</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
+                  <PinIcon className="text-muted-foreground" />
+                  <span>Pin Chat</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
                   <Trash2Icon className="text-muted-foreground" />
-                  <span>Delete Project</span>
+                  <span>Delete Chat</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

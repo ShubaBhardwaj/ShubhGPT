@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useUser } from "@clerk/nextjs"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
+import { NavRecentChats } from "@/components/nav-recent-chats"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -15,34 +17,24 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon } from "lucide-react"
+import { NotebookText, NotebookPen, Speech, BotIcon, BookOpenIcon, LifeBuoyIcon, SendIcon, FrameIcon, PieChartIcon, MapIcon, TerminalIcon } from "lucide-react"
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
-      title: "Playground",
+      title: "Personas",
       url: "#",
       icon: (
-        <TerminalSquareIcon
-        />
+        <Speech />
       ),
       isActive: true,
       items: [
         {
-          title: "History",
+          title: "Hitesh Choudary",
           url: "#",
         },
         {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
+          title: "Piyush Garg",
           url: "#",
         },
       ],
@@ -56,21 +48,21 @@ const data = {
       ),
       items: [
         {
-          title: "Genesis",
+          title: "ChatGPT",
           url: "#",
         },
         {
-          title: "Explorer",
+          title: "Gemini",
           url: "#",
         },
         {
-          title: "Quantum",
+          title: "Claude",
           url: "#",
         },
       ],
     },
     {
-      title: "Documentation",
+      title: "NoteBooks",
       url: "#",
       icon: (
         <BookOpenIcon
@@ -78,49 +70,21 @@ const data = {
       ),
       items: [
         {
-          title: "Introduction",
+          title: "New NoteBook",
           url: "#",
+          icon: (
+            <NotebookPen />
+          ),
         },
         {
-          title: "Get Started",
+          title: "My NoteBooks",
           url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
+          icon: (
+            <NotebookText />
+          ),
+        }
       ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: (
-        <Settings2Icon
-        />
-      ),
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
+    }
   ],
   navSecondary: [
     {
@@ -166,8 +130,26 @@ const data = {
       ),
     },
   ],
+  recentChats: [
+    { id: "1", title: "How to learn TypeScript fast", url: "#" },
+    { id: "2", title: "Build a REST API with Express", url: "#" },
+    { id: "3", title: "Next.js App Router explained", url: "#" },
+    { id: "4", title: "Tailwind CSS tips and tricks", url: "#" },
+    { id: "5", title: "MongoDB vs PostgreSQL", url: "#" },
+    { id: "6", title: "Docker for beginners", url: "#" },
+    { id: "7", title: "React Server Components deep dive", url: "#" },
+    { id: "8", title: "JWT authentication explained", url: "#" },
+  ],
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, isLoaded } = useUser()
+
+  const clerkUser = {
+    name: user?.fullName ?? user?.firstName ?? "User",
+    email: user?.primaryEmailAddress?.emailAddress ?? "",
+    avatar: user?.imageUrl ?? "",
+  }
+
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
@@ -178,8 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <TerminalIcon className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Acme Inc</span>
-                <span className="truncate text-xs">Enterprise</span>
+                <span className="truncate font-medium">ShubhGPT</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -188,10 +169,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
+        <NavRecentChats chats={data.recentChats} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {isLoaded && <NavUser user={clerkUser} />}
       </SidebarFooter>
     </Sidebar>
   )
