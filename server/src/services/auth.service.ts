@@ -177,7 +177,7 @@ class AuthService {
         },
         {
           session,
-          new: true,
+          returnDocument: "after",
         },
       );
 
@@ -250,7 +250,7 @@ class AuthService {
     const updated = await UserModel.findByIdAndUpdate(
       userId,
       { subscriptionId, usageId },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!updated) {

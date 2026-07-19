@@ -30,6 +30,7 @@ const clerkAuth = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log(`[clerkAuth] Incoming request to ${req.method} ${req.originalUrl}`);
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -64,9 +65,7 @@ const clerkAuth = async (
       headers,
       method: req.method,
       url: absoluteUrl,
-    } as any, {
-      jwtKey: process.env.CLERK_JWT_KEY,
-    });
+    } as any);
 
     if (!requestState.isAuthenticated) {
       console.error("[clerkAuth] Auth failed. Reason:", requestState.message, "Reason details:", requestState.reason);
@@ -79,12 +78,13 @@ const clerkAuth = async (
 
     // Attach the verified Clerk User ID to the request for downstream handlers.
     req.auth = {
-      clerkUserId: requestState.toAuth().userId,
+      clerkUserId: (requestState.toAuth() as any).userId,
     };
 
     next();
   } catch (error) {
     const message = (error as Error).message ?? "Authentication failed.";
+    console.error("[clerkAuth] Exception caught during authentication:", error);
     res.status(401).json({
       success: false,
       message: `Unauthorized: ${message}`,

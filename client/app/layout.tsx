@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/Providers/theme-provider";
+import { ClerkSync } from "@/components/clerk-sync";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -56,6 +57,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <ClerkSync />
             {children}
           </ThemeProvider>
           <Toaster />
