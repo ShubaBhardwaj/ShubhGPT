@@ -59,31 +59,36 @@ export class OpenAIResponseHandler {
       if (textDelta && textDelta.type === "text") {
         this.messageResponse.text += textDelta.text?.value || "";
         const now = Date.now();
-        if (now - this.last_update_time > 1000) {
+        if (now - this.last_update_time > 100) {
           this.chatClient.partialUpdateMessage(this.messageResponse.id, {
             set: { text: this.messageResponse.text },
-          });
+          }).catch(() => {});
           this.last_update_time = now;
         }
         this.chunk_count += 1;
       }
     } else if (event.event === "thread.message.completed") {
-      this.chatClient.partialUpdateMessage(this.messageResponse.id, {
-        set: {
-          text:
-            event.data.content[0].type === "text"
-              ? event.data.content[0].text?.value
-              : this.messageResponse.text,
-        },
-      });
-      this.channel.sendEvent({
+      const completedText =
+        event.data.content?.[0]?.type === "text"
+          ? event.data.content[0].text?.value
+          : undefined;
+
+      if (completedText) {
+        this.messageResponse.text = completedText;
+      }
+
+      await this.chatClient.partialUpdateMessage(this.messageResponse.id, {
+        set: { text: this.messageResponse.text },
+      }).catch(() => {});
+
+      await this.channel.sendEvent({
         type: "ai_indicator.clear",
         cid: cid,
         message_id: id,
       });
     } else if (event.event === "thread.run.step.created") {
       if (event.data.step_details.type === "message_creation") {
-        this.channel.sendEvent({
+        await this.channel.sendEvent({
           type: "ai_indicator.update",
           ai_state: "AI_STATE_GENERATING",
           cid: cid,
@@ -110,7 +115,7 @@ export class OpenAIResponseHandler {
           error.message ?? "An error occurred while generating the response.",
         message: error.toString(),
       },
-    });
+    }).catch(() => {});
 
     await this.dispose();
   };
@@ -165,100 +170,109 @@ export class OpenAIResponseHandler {
     }
   };
 
-  run = async () => {
-    const { cid, message_id } = this.messageResponse;
-    let isCompleted = false;
-    let toolOutput : any = [];
-    let currentStream: AssistantStream = this.assistantStream;
+  private consumeStream = async (stream: AssistantStream) => {
+    for await (const event of stream) {
+      await this.handleStreamEvent(event);
 
-    try {
-      while (!isCompleted) {
-        for await (const event of currentStream) {
-          this.handleStreamEvent(event);
+      if (
+        event.event === "thread.run.requires_action" &&
+        event.data.required_action?.type === "submit_tool_outputs"
+      ) {
+        this.run_id = event.data.id;
 
-          if (
-            event.event === "thread.run.requires_action" &&
-            event.data.required_action?.type === "submit_tool_outputs"
-          ) {
-            this.run_id = event.data.id;
+        await this.channel.sendEvent({
+          type: "ai_indicator.update",
+          ai_state: "AI_STATE_EXTERNAL_SOURCES",
+          cid: this.channel.cid,
+          message_id: this.messageResponse.id,
+        });
 
-            await this.channel.sendEvent({
-              type: "ai_indicator.update",
-              ai_state: "AI_STATE_ExTERNAL_SOURCES",
-              cid: this.channel.cid,
-              message_id: this.messageResponse.id,
-            });
-            const toolCalls =
-              event.data.required_action.submit_tool_outputs.tool_calls;
+        const toolCalls =
+          event.data.required_action.submit_tool_outputs.tool_calls;
+        const toolOutputs: any[] = [];
 
-            for (const toolCall of toolCalls){
-              if (toolCall.function.name === "web_search") {
-                try{
-                 const args = JSON.parse(toolCall.function.arguments)
-                 const searchResults = await this.performWebSearch(args.query)
-                 toolOutput.push({
-                  tool_call_id: toolCall.id,
-                  output: searchResults
-                 })
-                } catch (error: any) {
-                  console.error(
-                    `Failed to perform web search for tool call "${toolCall.id}":`,
-                    error,
-                  );
-                  toolOutput.push({
-                    tool_call_id: toolCall.id,
-                    output: JSON.stringify({
-                      error: "Failed to perform web search.",
-                      details: error.message,
-                    })
-                  })
-                }
-              }
-            }
-
-          }
-
-          if (event.event === "thread.run.completed") {
-            isCompleted = true;
-            break; // Exit the for-await loop
-          }
-
-          if (event.event === "thread.run.failed") {
-            isCompleted = true;
-            await this.handleError(
-              new Error(
-                event.data.last_error?.message ??
-                  "Run failed without a specific error message.",
-              ),
-            );
-            break; // Exit the for-await loop
-          }
-
-          if (isCompleted) {
-            break; // Exit the while loop if completed
-          }
-
-          if (toolOutput.length > 0) {
-            currentStream =
-              this.openai.beta.threads.runs.submitToolOutputsStream(
-                this.run_id,
-                {
-                  thread_id: this.openAIThread.id,
-                  tool_outputs: toolOutput,
-                },
+        for (const toolCall of toolCalls) {
+          if (toolCall.function.name === "web_search") {
+            try {
+              const args = JSON.parse(toolCall.function.arguments || "{}");
+              const searchResults = await this.performWebSearch(args.query || "");
+              toolOutputs.push({
+                tool_call_id: toolCall.id,
+                output: searchResults,
+              });
+            } catch (error: any) {
+              console.error(
+                `Failed to perform web search for tool call "${toolCall.id}":`,
+                error,
               );
-
-            toolOutput = []; // Reset toolOutput after submission
+              toolOutputs.push({
+                tool_call_id: toolCall.id,
+                output: JSON.stringify({
+                  error: "Failed to perform web search.",
+                  details: error.message,
+                }),
+              });
+            }
           }
         }
+
+        if (toolOutputs.length > 0) {
+          const nextStream =
+            this.openai.beta.threads.runs.submitToolOutputsStream(
+              this.run_id,
+              {
+                thread_id: this.openAIThread.id,
+                tool_outputs: toolOutputs,
+              },
+            );
+          await this.consumeStream(nextStream);
+          return;
+        }
       }
-    } catch (error) {
+
+      if (event.event === "thread.run.completed") {
+        this.is_done = true;
+        if (this.messageResponse.text) {
+          await this.chatClient.partialUpdateMessage(this.messageResponse.id, {
+            set: { text: this.messageResponse.text },
+          }).catch(() => {});
+        }
+        await this.channel.sendEvent({
+          type: "ai_indicator.clear",
+          cid: this.messageResponse.cid,
+          message_id: this.messageResponse.id,
+        });
+        await this.dispose();
+        return;
+      }
+
+      if (event.event === "thread.run.failed") {
+        this.is_done = true;
+        await this.handleError(
+          new Error(
+            event.data.last_error?.message ??
+              "Run failed without a specific error message.",
+          ),
+        );
+        return;
+      }
+    }
+  };
+
+  run = async () => {
+    try {
+      await this.consumeStream(this.assistantStream);
+    } catch (error: any) {
       console.error(
         "Error occurred while running the assistant stream:",
         error,
       );
+      await this.handleError(
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
   };
+
   dispose = async () => {
     if (this.is_done) {
       return;

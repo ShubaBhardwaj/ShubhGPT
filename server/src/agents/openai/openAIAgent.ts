@@ -113,46 +113,61 @@ Your goal is to provide accurate, current, and helpful written content. Failure 
 
     this.lastInteractionTs = Date.now();
 
-    const writingTask = (e.message.custom as { writingTask?: string })
-      ?.writingTask;
-    const context = writingTask ? `Writing Task: ${writingTask}` : undefined;
-    const instructions = this.getWritingAssistantPrompt(context);
-
-    await this.openai.beta.threads.messages.create(this.openAiThread.id, {
-      role: "user",
-      content: message,
-    });
-
-    const { message: channelMessage } = await this.channel.sendMessage({
-      text: "",
-      ai_generated: true,
-    });
-
-    await this.channel.sendEvent({
-      type: "ai_indicator.update",
-      ai_state: "AI_STATE_THINKING",
-      cid: channelMessage.cid,
-      message_id: channelMessage.id,
-    });
-
-    const run = this.openai.beta.threads.runs.createAndStream(
-      this.openAiThread.id,
-      {
-        assistant_id: this.assistant.id,
+    try {
+      // Check for any stuck/active runs on this thread and cancel them before proceeding
+      const activeRuns = await this.openai.beta.threads.runs.list(this.openAiThread.id, { limit: 5 }).catch(() => null);
+      if (activeRuns) {
+        for (const run of activeRuns.data) {
+          if (["in_progress", "queued", "requires_action"].includes(run.status)) {
+            console.log(`Cancelling active run ${run.id} on thread ${this.openAiThread.id}`);
+            await this.openai.beta.threads.runs.cancel(run.id, { thread_id: this.openAiThread.id }).catch(() => {});
+          }
+        }
       }
-    );
 
-    const handler = new OpenAIResponseHandler(
-      this.openai,
-      this.openAiThread,
-      run,
-      this.chatClient,
-      this.channel,
-      channelMessage,
-      () => this.removeHandler(handler)
-    );
-    this.handlers.push(handler);
-    void handler.run();
+      const writingTask = (e.message.custom as { writingTask?: string })
+        ?.writingTask;
+      const context = writingTask ? `Writing Task: ${writingTask}` : undefined;
+      const instructions = this.getWritingAssistantPrompt(context);
+
+      await this.openai.beta.threads.messages.create(this.openAiThread.id, {
+        role: "user",
+        content: message,
+      });
+
+      const { message: channelMessage } = await this.channel.sendMessage({
+        text: "",
+        ai_generated: true,
+      });
+
+      await this.channel.sendEvent({
+        type: "ai_indicator.update",
+        ai_state: "AI_STATE_THINKING",
+        cid: channelMessage.cid,
+        message_id: channelMessage.id,
+      });
+
+      const run = this.openai.beta.threads.runs.createAndStream(
+        this.openAiThread.id,
+        {
+          assistant_id: this.assistant.id,
+        }
+      );
+
+      const handler = new OpenAIResponseHandler(
+        this.openai,
+        this.openAiThread,
+        run,
+        this.chatClient,
+        this.channel,
+        channelMessage,
+        () => this.removeHandler(handler)
+      );
+      this.handlers.push(handler);
+      void handler.run();
+    } catch (error: any) {
+      console.error("Error in handleMessage for OpenAI Agent:", error);
+    }
   };
 
   private removeHandler = (handlerToRemove: OpenAIResponseHandler) => {

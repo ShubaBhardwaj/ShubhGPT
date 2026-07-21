@@ -12,6 +12,7 @@ import {
   useAIState,
 } from "stream-chat-react"
 import { backendUrl } from "@/lib/env"
+import { cn } from "@/lib/utils"
 import {
   MessageScroller,
   MessageScrollerViewport,
@@ -43,6 +44,7 @@ import {
   CopyIcon,
   ThumbsUpIcon,
   ThumbsDownIcon,
+  Loader2,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -101,6 +103,8 @@ function EmptyState({ name }: { name: string }) {
 
 // ─── Single message row ───────────────────────────────────────────────────────
 
+import { MarkdownRenderer } from "@/components/markdown-renderer"
+
 function ChatMessageRow({
   msg,
   userAvatar,
@@ -119,68 +123,67 @@ function ChatMessageRow({
     setTimeout(() => setCopied(false), 1500)
   }
 
-  return (
-    <Message align={isUser ? "end" : "start"} className="items-end">
-      {!isUser && (
-        <MessageAvatar>
-          <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-            AI
+  if (isUser) {
+    return (
+      <div className="flex flex-row justify-end items-start gap-3 my-4">
+        <div className="flex flex-col items-end max-w-[80%] sm:max-w-[70%]">
+          <span className="text-xs font-medium text-muted-foreground mb-1.5 px-1">
+            {userName} · {formatTime(msg.timestamp)}
+          </span>
+          <div className="rounded-2xl bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed shadow-sm">
+            <p className="whitespace-pre-wrap">{msg.content}</p>
           </div>
-        </MessageAvatar>
-      )}
+        </div>
+        <Avatar className="size-8 shrink-0 mt-1 shadow-sm">
+          <AvatarImage src={userAvatar} alt={userName} />
+          <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
+        </Avatar>
+      </div>
+    )
+  }
 
-      <MessageContent>
-        <MessageHeader>
-          {isUser ? userName : "ShubhGPT"} · {formatTime(msg.timestamp)}
-        </MessageHeader>
-
-        <Bubble variant={isUser ? "default" : "ghost"} align={isUser ? "end" : "start"}>
-          <BubbleContent>{msg.content}</BubbleContent>
-        </Bubble>
-
-        {!isUser && (
-          <MessageFooter>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={handleCopy}
-                title={copied ? "Copied!" : "Copy"}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <CopyIcon className="size-3.5" />
-              </button>
-              <button
-                title="Good response"
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <ThumbsUpIcon className="size-3.5" />
-              </button>
-              <button
-                title="Bad response"
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <ThumbsDownIcon className="size-3.5" />
-              </button>
-              <button
-                title="Regenerate"
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <RotateCcwIcon className="size-3.5" />
-              </button>
-              {copied && <span className="ml-1 text-xs text-muted-foreground">Copied!</span>}
-            </div>
-          </MessageFooter>
-        )}
-      </MessageContent>
-
-      {isUser && (
-        <MessageAvatar>
-          <Avatar className="size-8">
-            <AvatarImage src={userAvatar} alt={userName} />
-            <AvatarFallback className="text-xs">{getInitials(userName)}</AvatarFallback>
-          </Avatar>
-        </MessageAvatar>
-      )}
-    </Message>
+  return (
+    <div className="flex flex-row justify-start items-start gap-3 my-4">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm mt-1">
+        AI
+      </div>
+      <div className="flex flex-col flex-1 min-w-0">
+        <span className="text-xs font-medium text-muted-foreground mb-1.5">
+          ShubhGPT · {formatTime(msg.timestamp)}
+        </span>
+        <div className="w-full text-sm leading-relaxed">
+          <MarkdownRenderer content={msg.content} />
+        </div>
+        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+          <button
+            onClick={handleCopy}
+            title={copied ? "Copied!" : "Copy"}
+            className="rounded-md p-1.5 hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <CopyIcon className="size-3.5" />
+          </button>
+          <button
+            title="Good response"
+            className="rounded-md p-1.5 hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ThumbsUpIcon className="size-3.5" />
+          </button>
+          <button
+            title="Bad response"
+            className="rounded-md p-1.5 hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ThumbsDownIcon className="size-3.5" />
+          </button>
+          <button
+            title="Regenerate"
+            className="rounded-md p-1.5 hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <RotateCcwIcon className="size-3.5" />
+          </button>
+          {copied && <span className="ml-1.5 text-xs text-emerald-500 font-medium">Copied!</span>}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -219,7 +222,7 @@ function ChatComposer({
 
   return (
     <div className="shrink-0 px-4 pb-4 pt-2 md:px-8">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl">
         <InputGroup className="rounded-2xl border border-border bg-background shadow-sm transition-shadow focus-within:shadow-md">
           <InputGroupAddon align="inline-start">
             <InputGroupButton
@@ -308,12 +311,24 @@ function ActiveChat({ userName, userAvatar }: { userName: string; userAvatar: st
         <MessageScrollerProvider>
           <MessageScroller className="h-full">
             <MessageScrollerViewport className="px-4 py-6 md:px-8">
-              <MessageScrollerContent className="mx-auto max-w-3xl">
+              <MessageScrollerContent className="mx-auto w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl">
                 {chatMessages.map((msg, i) => (
-                  <MessageScrollerItem key={msg.id} scrollAnchor={i === chatMessages.length - 1}>
+                  <MessageScrollerItem key={msg.id} scrollAnchor={i === chatMessages.length - 1 && !isStreaming}>
                     <ChatMessageRow msg={msg} userAvatar={userAvatar} userName={userName} />
                   </MessageScrollerItem>
                 ))}
+                {isStreaming && (
+                  <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-muted-foreground animate-pulse">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                    <span>
+                      {aiState === "AI_STATE_EXTERNAL_SOURCES"
+                        ? "Searching the web…"
+                        : aiState === "AI_STATE_THINKING"
+                        ? "Thinking…"
+                        : "ShubhGPT is writing…"}
+                    </span>
+                  </div>
+                )}
               </MessageScrollerContent>
             </MessageScrollerViewport>
             <MessageScrollerButton />
@@ -411,6 +426,14 @@ export function ExistingChat({ channelId }: { channelId: string }) {
     if (!client) return
     let cancelled = false
     const ch = client.channel("messaging", channelId)
+
+    // Ensure AI agent is active for this channel
+    fetch(`${backendUrl}/start-ai-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel_id: channelId, channel_type: "messaging" }),
+    }).catch((err) => console.error("Error ensuring AI agent:", err))
+
     ch.watch().then(() => {
       if (!cancelled) setChannel(ch)
     })

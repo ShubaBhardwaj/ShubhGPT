@@ -5,11 +5,8 @@ import { useAuth } from "@clerk/nextjs"
 import { useTheme } from "next-themes"
 import { User } from "stream-chat"
 import { Chat, useCreateChatClient } from "stream-chat-react"
-
-const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY as string
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL as string
-
-if (!apiKey) throw new Error("Missing NEXT_PUBLIC_STREAM_API_KEY")
+import { backendUrl, streamApiKey } from "@/lib/env"
+import { Loader2 } from "lucide-react"
 
 interface ChatProviderProps {
   user: User
@@ -34,18 +31,26 @@ export function ChatProvider({ user, children }: ChatProviderProps) {
 
     if (!res.ok) throw new Error(`Failed to fetch Stream token: ${await res.text()}`)
 
-    // your controller returns { success, streamToken }
     const { streamToken } = await res.json()
     return streamToken as string
   }, [getToken])
 
   const client = useCreateChatClient({
-    apiKey,
+    apiKey: streamApiKey,
     tokenOrProvider: tokenProvider,
     userData: user,
   })
 
-  if (!client) return null // swap in a loading screen if you want one
+  if (!client) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <Loader2 className="size-6 animate-spin text-primary" />
+          <p className="text-sm font-medium">Connecting to Stream Chat…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Chat
