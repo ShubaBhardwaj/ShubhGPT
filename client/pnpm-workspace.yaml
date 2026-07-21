@@ -1,5 +1,7 @@
 allowBuilds:
   sharp: true
+  stream-chat: set this to true or false
+  stream-chat-react: set this to true or false
   unrs-resolver: true
 ignoredBuiltDependencies:
   - sharp

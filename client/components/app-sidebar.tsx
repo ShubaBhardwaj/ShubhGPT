@@ -130,16 +130,6 @@ const data = {
       ),
     },
   ],
-  recentChats: [
-    { id: "1", title: "How to learn TypeScript fast", url: "#" },
-    { id: "2", title: "Build a REST API with Express", url: "#" },
-    { id: "3", title: "Next.js App Router explained", url: "#" },
-    { id: "4", title: "Tailwind CSS tips and tricks", url: "#" },
-    { id: "5", title: "MongoDB vs PostgreSQL", url: "#" },
-    { id: "6", title: "Docker for beginners", url: "#" },
-    { id: "7", title: "React Server Components deep dive", url: "#" },
-    { id: "8", title: "JWT authentication explained", url: "#" },
-  ],
 }
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, isLoaded } = useUser()
@@ -169,7 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
-        <NavRecentChats chats={data.recentChats} />
+        <NavRecentChats />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
